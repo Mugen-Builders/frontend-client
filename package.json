@@ -1,6 +1,9 @@
 {
-  "name": "cartesi-client",
-  "version": "0.1.0",
+  "name": "@mugen-builders/client",
+  "version": "0.1.1",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "A typescript package that abstracts the complexity of the interaction with a Cartesi Rollups DApp.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +17,7 @@
     "test": "jest"
   },
   "author": "Arthur Vianna",
-  "license": "Apache-2.0",
+  "license": "ISC",
   "devDependencies": {
     "@ethersproject/providers": "^5.7.1",
     "@graphql-codegen/cli": "^5.0.0",
@@ -39,5 +42,24 @@
     "@graphql-codegen/typescript-operations": {
       "graphql": "~16.6.0"
     }
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mugen-Builders/frontend-client.git"
+  },
+  "keywords": [
+    "cartesi",
+    "frontend",
+    "http",
+    "graphql",
+    "rpc",
+    "json"
+  ],
+  "bugs": {
+    "url": "https://github.com/Mugen-Builders/frontend-client/issues"
+  },
+  "homepage": "https://github.com/Mugen-Builders/frontend-client#readme"
 }
