@@ -3,9 +3,9 @@
 LOG_FILE="sunodo_test.log"
 
 cd backend
-sunodo build
+cartesi build
 # run the DApp in the background
-sunodo run > ${LOG_FILE} 2>&1 &
+cartesi run > ${LOG_FILE} 2>&1 &
 SUNODO_PID=$!
 
 cd contracts
@@ -30,7 +30,7 @@ PUBLIC_KEY="0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
 docker run --rm ghcr.io/foundry-rs/foundry "forge create --rpc-url '${RPC_URL}' --mnemonic '${MNEMONIC}' --json src/simpleERC721.sol"
 
 # mint an NFT
-docker run --rm --net="host" ghcr.io/foundry-rs/foundry "cast send --mnemonic \"${MNEMONIC}\" --rpc-url \"${RPC_URL}\" \"0xc6e7DF5E7b4f2A278906862b61205850344D4e7d\" \"mintTo(address)\" ${PUBLIC_KEY}"
+docker run --rm --net="host" ghcr.io/foundry-rs/foundry "cast send --mnemonic \"${MNEMONIC}\" --rpc-url \"${RPC_URL}\" \"0x36C02dA8a0983159322a80FFE9F24b1acfF8B570\" \"mintTo(address)\" ${PUBLIC_KEY}"
 
 # go back to the test directory and run the tests
 cd ../
