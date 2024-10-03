@@ -213,8 +213,8 @@ Queries Cartesi Node's GraphQL server looking for a specific report.
 1. Run the test backend in one of the terminals
 ```shell
 cd backend
-sunodo build
-sunodo run
+cartesi build
+cartesi run
 ```
 
 2. Open a new terminal to deploy the ERC721 contract and mint the NFT used for tests
@@ -222,7 +222,7 @@ sunodo run
 export MNEMONIC="test test test test test test test test test test test junk"
 export RPC_URL="http://localhost:8545"
 export PUBLIC_KEY="0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
-export ERC721_ADDRESS="0xc6e7DF5E7b4f2A278906862b61205850344D4e7d"
+export ERC721_ADDRESS="0x36C02dA8a0983159322a80FFE9F24b1acfF8B570"
 ```
 
 ```shell
