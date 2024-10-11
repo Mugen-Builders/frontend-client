@@ -21,6 +21,8 @@ enum CompletionStatus {
 type Input {
   "Input index starting from genesis"
   index: Int!
+  "Id of L2 trnasaction on input"
+  id: String!
   "Status of the input"
   status: CompletionStatus!
   "Address responsible for submitting the input"
@@ -82,7 +84,7 @@ type Voucher {
 "Top level queries"
 type Query {
   "Get input based on its identifier"
-  input(index: Int!): Input!
+  input(index: Int, id: String): Input!
   "Get voucher based on its index"
   voucher(voucherIndex: Int!, inputIndex: Int!): Voucher!
   "Get notice based on its index"

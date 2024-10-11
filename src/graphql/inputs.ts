@@ -2,10 +2,13 @@ import { GraphQLClient, request } from 'graphql-request'
 import {
     Notice,
     GetInputResultDocument,
+    GetL2InputResultDocument,
     Report,
     Voucher,
     GetInputResultQuery,
     GetInputResultQueryVariables,
+    GetL2InputResultQuery,
+    GetL2InputResultQueryVariables,
     CompletionStatus,
     Input,
     GetInputDocument,
@@ -26,6 +29,10 @@ export interface InputResult extends GraphqlOptions {
     delayInterval: number;
 }
 
+export interface L2InputResult extends InputResult {
+    id: String;
+}
+
 const setDefaultInputResultOptions = (options: InputResult): InputResult => {
     options = setDefaultGraphqlOptions(options) as InputResult;
     if (options.initialDelay === undefined) {
@@ -34,6 +41,11 @@ const setDefaultInputResultOptions = (options: InputResult): InputResult => {
     if (options.delayInterval === undefined) {
         options.delayInterval = DEFAULT_DELAY_INTERVAL;
     }
+    return options;
+}
+
+const setDefaultL2InputResultOptions = (options: L2InputResult): L2InputResult => {
+    options = setDefaultGraphqlOptions(options) as L2InputResult
     return options;
 }
 
@@ -57,6 +69,68 @@ export const getInputResult = async (
     while (result.notices.length == 0 && result.reports.length == 0 && result.vouchers.length == 0) {
         try {
             data = await client.request(GetInputResultDocument, variables);
+        } catch(error) {
+            if (!isInputNotFound(error as Error)) {
+                console.log((error as Error).message);
+                return;
+            }
+            
+            // sleep then continue
+            await sleep(options.delayInterval);
+            continue;
+        }
+        
+        // query the GraphQL server for the reports and notices
+        console.log(
+            `querying ${getGraphqlUrl(options)} for notices, reports, and vouchers for input with index "${options.inputIndex}"...`
+        );
+
+        if (data?.input) {
+            if (data.input.status != CompletionStatus.Unprocessed){
+                result = {notices: [] as Array<Notice>, reports: [] as Array<Report>, vouchers: [] as Array<Voucher>}
+                // add notices to the result
+                for (let i = 0; i < data.input.notices.edges.length; i++) {
+                    result.notices.push(data.input.notices.edges[i].node);
+                }
+
+                // add reports to the result
+                for (let i = 0; i < data.input.reports.edges.length; i++) {
+                    result.reports.push(data.input.reports.edges[i].node);
+                }
+
+                // add vouchers to the result
+                for (let i = 0; i < data.input.vouchers.edges.length; i++) {
+                    result.vouchers.push(data.input.vouchers.edges[i].node);
+                }
+
+                if (data.input.status != CompletionStatus.Accepted) {
+                    const errorMessage = result.reports.length > 0 ? result.reports[result.reports.length - 1].payload : `Advance error: ${data.input.status}`
+                    throw new Error(errorMessage);
+                }
+            }
+        } else {
+            throw new Error(`Unable to get Reports, Notices, and Vouchers for input ${options.inputIndex}!`);
+        }
+        await sleep(options.delayInterval);
+    }
+
+    return result;
+};
+
+export const getL2InputResult = async (
+    options: L2InputResult
+): Promise<{notices: Array<PartialNotice>, reports: Array<PartialReport>, vouchers: Array<PartialVoucher>}> => {
+    if (options.id == undefined)
+        throw new Error("Missing input id");
+    options = setDefaultL2InputResultOptions(options);
+    let result = {notices: [] as Array<PartialNotice>, reports: [] as Array<PartialReport>, vouchers: [] as Array<PartialVoucher>}
+
+    const variables:GetL2InputResultQueryVariables = {id: options.id as string};
+    const client = new GraphQLClient(getGraphqlUrl(options))
+    let data:GetL2InputResultQuery;
+    while (result.notices.length == 0 && result.reports.length == 0 && result.vouchers.length == 0) {
+        try {
+            data = await client.request(GetL2InputResultDocument, variables);
         } catch(error) {
             if (!isInputNotFound(error as Error)) {
                 console.log((error as Error).message);

@@ -241,3 +241,58 @@ query getInput($inputIndex: Int!) {
     payload
   }
 }
+
+query getL2InputResult($id: String!) {
+  input(id: $id) {
+    status
+    timestamp
+    msgSender
+    blockNumber
+    reports {
+      edges {
+        node {
+          index
+          input {
+            index
+          }
+          payload
+        }
+      }
+    }
+    notices {
+      edges {
+        node {
+          index
+          input {
+            index
+          }
+          payload
+        }
+      }
+    }
+    vouchers {
+      edges {
+        node {
+          index
+          input {
+            index
+          }
+          destination
+          payload
+        }
+      }
+    }
+  }
+}
+
+query getL2Input($id: String!) {
+  input(id: $id) {
+    id
+    index
+    status
+    timestamp
+    msgSender
+    blockNumber
+    payload
+  }
+}

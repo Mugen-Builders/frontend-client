@@ -1,5 +1,5 @@
 import { Notice, Report, Voucher } from "@/generated/graphql";
-import { getInputResult, InputResult } from "@/graphql/inputs";
+import { getInputResult, InputResult, getL2InputResult, L2InputResult } from "@/graphql/inputs";
 import {
     DEFAULT_CARTESI_NODE_URL,
     DEFAULT_INPUT_BOX_ADDRESS,
@@ -10,6 +10,10 @@ import {
 import { InputBox__factory, ERC20Portal__factory, ERC721Portal__factory, IERC20__factory, IERC721__factory, EtherPortal__factory, DAppAddressRelay__factory } from "@cartesi/rollups";
 import { Signer, utils, ContractReceipt, BigNumber, ethers } from "ethers";
 import { PartialNotice, PartialReport, PartialVoucher } from "..";
+import { Provider, Web3Provider } from "@ethersproject/providers";
+
+// import { createWalletClient, custom } from "viem";
+// import { sepolia } from "viem/chains";
 
 interface AdvanceOptions {
     sync?: boolean;
@@ -96,7 +100,6 @@ export async function advanceInput(
     if (options.inputBoxAddress === undefined) {
         options.inputBoxAddress = DEFAULT_INPUT_BOX_ADDRESS;
     }
-
     const inputContract = InputBox__factory.connect(
         options.inputBoxAddress,
         client
@@ -111,17 +114,23 @@ export async function advanceInput(
     } else {
         payloadBytes = payload;
     }
-    const input = await inputContract.addInput(
-        dappAddress, payloadBytes);
+    console.log('send inptt')
+    const input = await inputContract.addInput(dappAddress, payloadBytes);
+    console.log('wait')
     const receipt = await input.wait();
+    console.log('sync')
 
     // call is async, return addInput's receipt
     if (!options.sync) return receipt;
+   
+    console.log("receipt")
+    console.log(receipt)
 
     // call is sync, fetch input processing result (reports, notices, and vouchers)
     const inputIndex = Number(receipt.events[0].args[1]._hex);
     const inputResultOptions: InputResult = options as InputResult;
     inputResultOptions.inputIndex = inputIndex;
+
     return await getInputResult(inputResultOptions);
 }
 
@@ -393,3 +402,128 @@ export async function advanceDAppRelay(
     inputResultOptions.inputIndex = inputIndex;
     return await getInputResult(inputResultOptions);
 }
+
+export async function advanceEIP712(
+    client:Signer,
+    provider: any,
+    dappAddress:string,
+    payload:string|Uint8Array,
+    options?:AdvanceInputOptions
+):Promise<AdvanceOutput|ContractReceipt|any> {
+    options = setDefaultAdvanceValues(options);
+
+    let payloadString: string;
+    if (payload instanceof Uint8Array) {
+        payloadString = utils.hexlify(payload); // Convert Uint8Array to hex string
+    } else if (typeof payload == "string") {
+        if (utils.isHexString(payload))
+            payloadString = payload;
+        else
+            payloadString = utils.hexlify(utils.toUtf8Bytes(payload));
+    } else {
+        throw "Unsupported type for payload"
+    }
+
+    console.log("NUUUURL", options.cartesiNodeUrl)
+    let txId = await addTransactionL2(client, provider, dappAddress, options.cartesiNodeUrl, payloadString)
+
+    // call is sync, fetch input processing result (reports, notices, and vouchers)
+    const inputResultOptions: L2InputResult = options as L2InputResult;
+    inputResultOptions.id = txId;
+    return await getL2InputResult(inputResultOptions);
+}
+
+let genTypedData = async (client: Signer) => { 
+    return {
+        domain: {
+            name: "Cartesi",
+            version: "0.1.0",
+            chainId: await client.getChainId(),
+            verifyingContract:
+                "0x0000000000000000000000000000000000000000",
+        } as const,
+        types: {
+            EIP712Domain: [
+                { name: "name", type: "string" },
+                { name: "version", type: "string" },
+                { name: "chainId", type: "uint256" },
+                { name: "verifyingContract", type: "address" },
+            ],
+            CartesiMessage: [
+                { name: "app", type: "address" },
+                { name: "nonce", type: "uint64" },
+                { name: "max_gas_price", type: "uint128" },
+                { name: "data", type: "bytes" },
+            ],
+        } as const,
+        primaryType: "CartesiMessage" as const,
+        message: {
+            app: "0x",
+            nonce: 0,
+            data : "0x",
+            max_gas_price: 10
+        },
+    }
+}
+
+const fetchNonceL2 = async (user: any, application: any, nodeUrl: string) => {
+    console.log({ user, application, nodeUrl })
+    const response = await fetch(nodeUrl + '/nonce', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ msg_sender: user, app_contract: application })
+    });
+
+    const responseData = await response.json();
+    const nextNonce = responseData.nonce;
+    return nextNonce
+}
+
+const submitTransactionL2 = async (fullBody: any, nodeUrl: string) => {
+    const body = JSON.stringify(fullBody)
+    const response = await fetch(nodeUrl + '/submit', {
+        method: 'POST',
+        body,
+        headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) {
+        console.log("submit to Paio failed")
+        throw new Error("submit to Paio failed: " + response.text())
+    } else {
+        return response.json()
+    }
+}
+
+const addTransactionL2 = async (client:Signer, provider: Web3Provider, namespace: string, nodeUrl: string, payload: string) => {
+    let typedData = await genTypedData(client)
+    const app = namespace
+    const account = await client.getAddress()
+    const nonce = await fetchNonceL2(account, app, nodeUrl)
+
+    typedData.message = {
+        app,
+        nonce,
+        data: payload,
+        max_gas_price: 10,
+    }
+
+    console.log("WHERE IS THE SIGN")
+    const signature = await provider.send("eth_signTypedData_v4", [
+        await client.getAddress(), // Signer's address
+        JSON.stringify({
+            domain: typedData.domain,
+            message: typedData.message,
+            primaryType: typedData.primaryType,
+            types: typedData.types
+        })
+    ]);
+    const res = await submitTransactionL2({
+        typedData,
+        account,
+        signature,
+    }, nodeUrl)
+    return res.id
+    
+};
