@@ -1,6 +1,6 @@
 {
   "name": "@mugen-builders/client",
-  "version": "0.1.2-rc1",
+  "version": "0.1.2-rc1.0",
   "publishConfig": {
     "access": "public"
   },
