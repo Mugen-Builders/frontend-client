@@ -104,7 +104,7 @@ export async function advanceInput(
         options.inputBoxAddress,
         client
     );
-
+    console.log(options.inputBoxAddress)
     let payloadBytes: Uint8Array;
     if (typeof payload == "string") {
         if (utils.isHexString(payload))
@@ -114,24 +114,21 @@ export async function advanceInput(
     } else {
         payloadBytes = payload;
     }
-    console.log('send inptt')
     const input = await inputContract.addInput(dappAddress, payloadBytes);
-    console.log('wait')
     const receipt = await input.wait();
-    console.log('sync')
 
     // call is async, return addInput's receipt
     if (!options.sync) return receipt;
    
-    console.log("receipt")
     console.log(receipt)
 
     // call is sync, fetch input processing result (reports, notices, and vouchers)
-    const inputIndex = Number(receipt.events[0].args[1]._hex);
-    const inputResultOptions: InputResult = options as InputResult;
-    inputResultOptions.inputIndex = inputIndex;
+    const inputIndex = Number(parseInt(receipt.events[0].topics[2], 16));
 
-    return await getInputResult(inputResultOptions);
+    const inputResultOptions: L2InputResult = options as L2InputResult;
+    inputResultOptions.id = inputIndex.toString();
+
+    return await getL2InputResult(inputResultOptions);
 }
 
 
@@ -509,7 +506,6 @@ const addTransactionL2 = async (client:Signer, provider: Web3Provider, namespace
         max_gas_price: 10,
     }
 
-    console.log("WHERE IS THE SIGN")
     const signature = await provider.send("eth_signTypedData_v4", [
         await client.getAddress(), // Signer's address
         JSON.stringify({
